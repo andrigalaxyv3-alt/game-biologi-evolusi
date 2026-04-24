@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Evolution Adventure - Biologi XII</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -13,6 +13,7 @@
             overflow: hidden;
             background-color: #222;
             font-family: 'Press Start 2P', cursive;
+            touch-action: none; /* Mencegah zoom/scroll pada mobile */
         }
 
         #game-container {
@@ -34,8 +35,8 @@
 
         #ui-layer {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 10px;
+            left: 10px;
             color: #333;
             pointer-events: none;
             z-index: 10;
@@ -47,7 +48,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 25px;
+            padding: 20px;
             border: 4px solid #333;
             border-radius: 8px;
             display: none;
@@ -59,8 +60,8 @@
         }
 
         .quiz-overlay h2 {
-            font-size: 14px;
-            margin-bottom: 15px;
+            font-size: 12px;
+            margin-bottom: 10px;
             line-height: 1.6;
             color: #d32f2f;
         }
@@ -69,70 +70,116 @@
             background: #4A90E2;
             color: white;
             border: none;
-            padding: 12px;
+            padding: 10px;
             font-family: 'Press Start 2P', cursive;
-            font-size: 9px;
+            font-size: 8px;
             cursor: pointer;
             text-align: left;
-            transition: transform 0.1s;
-        }
-
-        .btn-option:hover {
-            background: #357ABD;
-            transform: scale(1.02);
         }
 
         #message-box {
             position: absolute;
-            bottom: 50px;
+            bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.8);
             color: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 5px;
             display: none;
-            font-size: 12px;
+            font-size: 10px;
             text-align: center;
             z-index: 50;
         }
 
         #audio-controls {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
             z-index: 60;
-            pointer-events: auto;
         }
 
         .audio-btn {
             background: rgba(255, 255, 255, 0.8);
             border: 2px solid #333;
-            padding: 8px;
+            padding: 5px;
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
-            font-size: 8px;
+            font-size: 7px;
+        }
+
+        /* Mobile Controls Styling */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+            z-index: 80;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .touch-btn:active {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        @media (min-width: 1024px) {
+            #mobile-controls {
+                display: none; /* Sembunyikan di desktop */
+            }
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <!-- Audio Controls -->
         <div id="audio-controls">
-            <button id="music-toggle" class="audio-btn">MUSIC: OFF</button>
+            <button id="music-toggle" class="audio-btn">MUSIK: OFF</button>
         </div>
 
         <div id="ui-layer">
-            <div>SKOR: <span id="score">0</span></div>
-            <div>DNA: <span id="dna-count">0</span></div>
-            <div id="level-indicator" class="mt-2 text-xs">Difficulty: Level 1</div>
+            <div class="text-[10px]">SKOR: <span id="score">0</span></div>
+            <div class="text-[10px]">DNA: <span id="dna-count">0</span></div>
+            <div id="level-indicator" class="mt-1 text-[8px]">Kesulitan: Level 1</div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
 
+        <!-- Mobile Controls -->
+        <div id="mobile-controls">
+            <div class="control-group">
+                <div id="btn-left" class="touch-btn">◀</div>
+                <div id="btn-right" class="touch-btn">▶</div>
+            </div>
+            <div class="control-group">
+                <div id="btn-jump" class="touch-btn">▲</div>
+            </div>
+        </div>
+
         <div id="quiz-container" class="quiz-overlay">
-            <div class="text-[10px] mb-2 text-blue-600">GERBANG EVOLUSI</div>
+            <div class="text-[8px] mb-2 text-blue-600">GERBANG EVOLUSI</div>
             <h2 id="question">Pertanyaan Evolusi di sini?</h2>
             <div id="options-list" class="flex flex-col gap-2"></div>
         </div>
@@ -140,7 +187,6 @@
         <div id="message-box"></div>
     </div>
 
-    <!-- Background Music (Retro Style) -->
     <audio id="bgMusic" loop>
         <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
     </audio>
@@ -188,6 +234,13 @@
 
         const keys = {};
         
+        // Mobile input state
+        const touchInput = {
+            left: false,
+            right: false,
+            jump: false
+        };
+
         const platforms = [
             { x: 0, y: 400, w: 1000, h: 50, type: 'ground' },
             { x: 200, y: 300, w: 150, h: 20, type: 'platform' },
@@ -261,17 +314,34 @@
             }
         ];
 
-        // Music Toggle Function
+        // Music Toggle
         musicToggle.onclick = () => {
             if (isMusicPlaying) {
                 bgMusic.pause();
-                musicToggle.innerText = "MUSIC: OFF";
+                musicToggle.innerText = "MUSIK: OFF";
             } else {
-                bgMusic.play().catch(e => console.log("User interaction required"));
-                musicToggle.innerText = "MUSIC: ON";
+                bgMusic.play().catch(e => console.log("Interaksi user diperlukan"));
+                musicToggle.innerText = "MUSIK: ON";
             }
             isMusicPlaying = !isMusicPlaying;
         };
+
+        // Mobile Controls Event Listeners
+        const setupTouchBtn = (id, property) => {
+            const btn = document.getElementById(id);
+            const startHandler = (e) => { e.preventDefault(); touchInput[property] = true; };
+            const endHandler = (e) => { e.preventDefault(); touchInput[property] = false; };
+            
+            btn.addEventListener('touchstart', startHandler);
+            btn.addEventListener('touchend', endHandler);
+            btn.addEventListener('mousedown', startHandler);
+            btn.addEventListener('mouseup', endHandler);
+            btn.addEventListener('mouseleave', endHandler);
+        };
+
+        setupTouchBtn('btn-left', 'left');
+        setupTouchBtn('btn-right', 'right');
+        setupTouchBtn('btn-jump', 'jump');
 
         function drawPlayer() {
             ctx.fillStyle = player.color;
@@ -373,14 +443,14 @@
         function checkAnswer(selectedIndex, qIndex, gateId) {
             const q = questions[qIndex];
             if (selectedIndex === q.correct) {
-                showMessage("Luar Biasa! Kamu beradaptasi dengan baik!");
+                showMessage("Luar Biasa! Kamu beradaptasi!");
                 gates.find(g => g.id === gateId).active = false;
                 score += 200;
                 currentGateIndex++;
                 scoreEl.innerText = score;
-                levelIndicator.innerText = `Difficulty: Level ${currentGateIndex + 1}`;
+                levelIndicator.innerText = `Kesulitan: Level ${currentGateIndex + 1}`;
             } else {
-                showMessage("Gagal Adaptasi! Kamu terlempar mundur.");
+                showMessage("Gagal Adaptasi! Terlempar!");
                 player.x -= 150;
             }
             quizContainer.style.display = 'none';
@@ -391,14 +461,15 @@
         function update() {
             if (!gameActive) return;
 
-            if (keys[39] || keys['ArrowRight']) {
+            // Handle Input (Keyboard + Touch)
+            if (keys[39] || keys['ArrowRight'] || touchInput.right) {
                 if (player.velX < SPEED) player.velX++;
             }
-            if (keys[37] || keys['ArrowLeft']) {
+            if (keys[37] || keys['ArrowLeft'] || touchInput.left) {
                 if (player.velX > -SPEED) player.velX--;
             }
 
-            if ((keys[38] || keys['ArrowUp'] || keys[' ']) && !player.jumping && player.grounded) {
+            if ((keys[38] || keys['ArrowUp'] || keys[' '] || touchInput.jump) && !player.jumping && player.grounded) {
                 player.jumping = true;
                 player.grounded = false;
                 player.velY = JUMP_FORCE;
@@ -442,7 +513,7 @@
                     } else {
                         player.x = 50;
                         player.y = 300;
-                        showMessage("Dimakan Predator! Kamu tereliminasi.");
+                        showMessage("Dimakan Predator!");
                     }
                 }
             });
@@ -479,7 +550,7 @@
                 player.x = 50;
                 player.y = 300;
                 player.velY = 0;
-                showMessage("Seleksi Alam: Organisme tidak bertahan.");
+                showMessage("Seleksi Alam: Mati!");
             }
 
             draw();
@@ -507,9 +578,9 @@
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 ctx.fillRect(0,0, CANVAS_WIDTH, CANVAS_HEIGHT);
                 ctx.fillStyle = 'white';
-                ctx.font = '20px "Press Start 2P"';
+                ctx.font = '16px "Press Start 2P"';
                 ctx.fillText("EVOLUSI SEMPURNA!", 150, 200);
-                ctx.font = '12px "Press Start 2P"';
+                ctx.font = '10px "Press Start 2P"';
                 ctx.fillText(`Skor Akhir: ${score}`, 250, 250);
             }
         }
@@ -519,7 +590,7 @@
 
         window.onload = () => {
             update();
-            showMessage("Hati-hati Predator Dinosaurus!");
+            showMessage("Gunakan Tombol Layar atau Keyboard!");
         };
 
     </script>
