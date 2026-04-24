@@ -78,13 +78,11 @@
             color: #333;
         }
 
-        /* Mobile Controls - Ditingkatkan agar tidak terpotong */
         #mobile-controls {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            /* Memberikan ruang aman di bawah dan samping agar tombol tidak di pinggir sekali */
             padding-bottom: max(35px, env(safe-area-inset-bottom));
             padding-left: max(30px, env(safe-area-inset-left));
             padding-right: max(30px, env(safe-area-inset-right));
@@ -157,7 +155,7 @@
             bottom: 40%;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
+            background: rgba(0, 0, 0, 0.85);
             color: white;
             padding: 12px;
             border: 2px solid #fff;
@@ -166,6 +164,7 @@
             text-align: center;
             z-index: 180;
             width: 70%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         .btn-small {
@@ -242,7 +241,7 @@
         <div id="ui-layer">
             <div style="font-size: 10px;">SKOR: <span id="score">0</span></div>
             <div style="font-size: 10px;">DNA: <span id="dna-count">0</span></div>
-            <div id="level-indicator" style="margin-top: 4px; font-size: 8px;">Level 1</div>
+            <div id="level-indicator" style="margin-top: 4px; font-size: 8px;">Level: Organisme Primitif</div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -295,12 +294,9 @@
         function resize() {
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-            
             const scale = Math.min(windowWidth / BASE_WIDTH, windowHeight / BASE_HEIGHT);
-            
             canvas.width = BASE_WIDTH;
             canvas.height = BASE_HEIGHT;
-            
             canvas.style.width = (BASE_WIDTH * scale) + 'px';
             canvas.style.height = (BASE_HEIGHT * scale) + 'px';
         }
@@ -312,6 +308,8 @@
         const GRAVITY = 0.48;
         const JUMP_FORCE = -11.5;
         const SPEED = 4.8;
+        const START_X = 100;
+        const START_Y = 300;
 
         let score = 0;
         let dnaCount = 0;
@@ -319,16 +317,26 @@
         let cameraX = 0;
         let currentGateIndex = 0;
 
+        // SISTEM EVOLUSI: Tahapan visual karakter
+        const evolutionStages = [
+            { name: "Organisme Primitif", color: "#FF5733", width: 32, height: 32 },
+            { name: "Makhluk Seluler", color: "#33FF57", width: 35, height: 40 },
+            { name: "Amfibi Awal", color: "#3357FF", width: 40, height: 45 },
+            { name: "Reptilia Cerdas", color: "#A033FF", width: 45, height: 50 },
+            { name: "Makhluk Sempurna", color: "#FFD700", width: 50, height: 60 }
+        ];
+
         const player = {
-            x: 100,
-            y: 300,
-            width: 32,
-            height: 48,
+            x: START_X,
+            y: START_Y,
+            width: evolutionStages[0].width,
+            height: evolutionStages[0].height,
             velX: 0,
             velY: 0,
             jumping: false,
             grounded: false,
-            color: '#FF5733'
+            color: evolutionStages[0].color,
+            stage: 0
         };
 
         const keys = {};
@@ -379,6 +387,15 @@
             { q: "Jika P = 0,6, berapa frekuensi heterozigot (2Pq)?", options: ["0,36", "0,16", "0,48", "0,24"], correct: 2 }
         ];
 
+        function respawnPlayer(reason) {
+            player.x = START_X;
+            player.y = START_Y;
+            player.velX = 0;
+            player.velY = 0;
+            cameraX = 0;
+            showMessage(reason);
+        }
+
         settingsToggle.onclick = (e) => {
             e.stopPropagation();
             settingsPanel.style.display = settingsPanel.style.display === 'flex' ? 'none' : 'flex';
@@ -410,14 +427,8 @@
 
         const setupTouchBtn = (id, property) => {
             const btn = document.getElementById(id);
-            const start = (e) => { 
-                e.preventDefault(); 
-                touchInput[property] = true; 
-            };
-            const end = (e) => { 
-                e.preventDefault(); 
-                touchInput[property] = false; 
-            };
+            const start = (e) => { e.preventDefault(); touchInput[property] = true; };
+            const end = (e) => { e.preventDefault(); touchInput[property] = false; };
             btn.addEventListener('touchstart', start);
             btn.addEventListener('touchend', end);
             btn.addEventListener('mousedown', start);
@@ -429,13 +440,37 @@
         setupTouchBtn('btn-right', 'right');
         setupTouchBtn('btn-jump', 'jump');
 
+        // Fungsi menggambar pemain dengan efek evolusi
         function drawPlayer() {
+            const currentStage = evolutionStages[player.stage];
+            
+            // Efek cahaya jika sudah makhluk sempurna
+            if (player.stage === 4) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#FFD700";
+            }
+
             ctx.fillStyle = player.color;
             ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+
+            // Mata karakter
             ctx.fillStyle = '#fff';
-            ctx.fillRect(player.x - cameraX + 20, player.y + 10, 8, 8);
+            const eyeSize = 6 + (player.stage * 1);
+            ctx.fillRect(player.x - cameraX + (player.width - eyeSize - 4), player.y + 8, eyeSize, eyeSize);
             ctx.fillStyle = '#000';
-            ctx.fillRect(player.x - cameraX + 24, player.y + 12, 4, 4);
+            ctx.fillRect(player.x - cameraX + (player.width - eyeSize/2 - 4), player.y + 10, eyeSize/2, eyeSize/2);
+
+            // Aksesoris evolusi (Antena/Struktur)
+            if (player.stage >= 2) {
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x - cameraX + player.width/4, player.y - 8, 4, 8);
+                ctx.beginPath();
+                ctx.arc(player.x - cameraX + player.width/4 + 2, player.y - 10, 4, 0, Math.PI*2);
+                ctx.fill();
+            }
         }
 
         function drawEnemies() {
@@ -488,7 +523,20 @@
         function showMessage(text) {
             messageBox.innerText = text;
             messageBox.style.display = 'block';
-            setTimeout(() => messageBox.style.display = 'none', 2500);
+            setTimeout(() => messageBox.style.display = 'none', 1500);
+        }
+
+        // Fungsi memperbarui tahap evolusi pemain
+        function evolvePlayer() {
+            if (player.stage < evolutionStages.length - 1) {
+                player.stage++;
+                const next = evolutionStages[player.stage];
+                player.color = next.color;
+                player.width = next.width;
+                player.height = next.height;
+                levelIndicator.innerText = `Level: ${next.name}`;
+                showMessage(`BEREVOLUSI MENJADI ${next.name.toUpperCase()}!`);
+            }
         }
 
         function triggerQuiz(gateId) {
@@ -502,15 +550,13 @@
                 b.innerText = opt;
                 b.onclick = () => {
                     if (idx === q.correct) {
-                        showMessage("Luar Biasa! Adaptasi Berhasil!");
+                        evolvePlayer(); // Karakter berevolusi
                         gates.find(g => g.id === gateId).active = false;
                         score += 200;
                         currentGateIndex++;
                         scoreEl.innerText = score;
-                        levelIndicator.innerText = `Level ${currentGateIndex + 1}`;
                     } else {
-                        showMessage("Gagal Adaptasi! Terlempar!");
-                        player.x -= 200;
+                        respawnPlayer("Gagal Adaptasi! Kamu Terlempar!");
                     }
                     quizContainer.style.display = 'none';
                     gameActive = true;
@@ -565,8 +611,7 @@
                         scoreEl.innerText = score;
                         player.velY = -7;
                     } else {
-                        player.x = 100; player.y = 300;
-                        showMessage("Predator Menang!");
+                        respawnPlayer("Punah Dimakan Predator!");
                     }
                 }
             });
@@ -594,8 +639,7 @@
             }
 
             if (player.y > BASE_HEIGHT) {
-                player.x = 100; player.y = 300; player.velY = 0;
-                showMessage("Punah! Mulai Lagi.");
+                respawnPlayer("Gagal Beradaptasi Dengan Jurang!");
             }
 
             draw();
@@ -605,6 +649,7 @@
         function draw() {
             ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
             
+            // Awan
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.beginPath();
             ctx.arc(200 - (cameraX*0.1), 80, 20, 0, Math.PI*2);
@@ -628,12 +673,14 @@
                 gameActive = false;
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
                 ctx.fillRect(0,0, BASE_WIDTH, BASE_HEIGHT);
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#FFD700';
                 ctx.font = '16px "Press Start 2P"';
                 ctx.textAlign = "center";
                 ctx.fillText("EVOLUSI SEMPURNA!", BASE_WIDTH/2, 200);
+                ctx.fillStyle = '#fff';
                 ctx.font = '10px "Press Start 2P"';
-                ctx.fillText(`Skor Akhir: ${score}`, BASE_WIDTH/2, 250);
+                ctx.fillText(`Kamu mencapai puncak hierarki biologis!`, BASE_WIDTH/2, 240);
+                ctx.fillText(`Skor Akhir: ${score}`, BASE_WIDTH/2, 280);
             }
         }
 
