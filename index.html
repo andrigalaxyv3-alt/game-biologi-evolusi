@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Evolution Adventure - Biologi XII</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -10,36 +10,118 @@
         
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
-            background-color: #222;
+            background-color: #000;
             font-family: 'Press Start 2P', cursive;
-            touch-action: none; /* Mencegah zoom/scroll pada mobile */
+            touch-action: none;
+            width: 100vw;
+            height: 100vh;
         }
 
         #game-container {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
+            background-color: #1a1a1a;
+            overflow: hidden;
         }
 
         canvas {
             background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
             display: block;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            image-rendering: pixelated;
             max-width: 100%;
             max-height: 100%;
         }
 
         #ui-layer {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: max(20px, env(safe-area-inset-top));
+            left: max(20px, env(safe-area-inset-left));
             color: #333;
             pointer-events: none;
-            z-index: 10;
+            z-index: 100;
+        }
+
+        #settings-menu {
+            position: absolute;
+            top: max(20px, env(safe-area-inset-top));
+            right: max(20px, env(safe-area-inset-right));
+            z-index: 110;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid #333;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 5px;
+            min-width: 200px;
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9px;
+            color: #333;
+        }
+
+        /* Mobile Controls - Ditingkatkan agar tidak terpotong */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            /* Memberikan ruang aman di bawah dan samping agar tombol tidak di pinggir sekali */
+            padding-bottom: max(35px, env(safe-area-inset-bottom));
+            padding-left: max(30px, env(safe-area-inset-left));
+            padding-right: max(30px, env(safe-area-inset-right));
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 150;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 75px;
+            height: 75px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 4px solid rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #000;
+            font-size: 28px;
+            user-select: none;
+            -webkit-user-select: none;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .touch-btn:active {
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0.9);
+            border-color: #000;
         }
 
         .quiz-overlay {
@@ -50,27 +132,20 @@
             background: white;
             padding: 20px;
             border: 4px solid #333;
-            border-radius: 8px;
+            box-shadow: 6px 6px 0px #000;
             display: none;
             flex-direction: column;
             gap: 10px;
             width: 90%;
-            max-width: 600px;
-            z-index: 100;
-        }
-
-        .quiz-overlay h2 {
-            font-size: 12px;
-            margin-bottom: 10px;
-            line-height: 1.6;
-            color: #d32f2f;
+            max-width: 500px;
+            z-index: 200;
         }
 
         .btn-option {
             background: #4A90E2;
             color: white;
-            border: none;
-            padding: 10px;
+            border: 2px solid #333;
+            padding: 12px;
             font-family: 'Press Start 2P', cursive;
             font-size: 8px;
             cursor: pointer;
@@ -79,95 +154,99 @@
 
         #message-box {
             position: absolute;
-            bottom: 120px;
+            bottom: 40%;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             color: white;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border: 2px solid #fff;
             display: none;
-            font-size: 10px;
+            font-size: 9px;
             text-align: center;
-            z-index: 50;
+            z-index: 180;
+            width: 70%;
         }
 
-        #audio-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 60;
-        }
-
-        .audio-btn {
-            background: rgba(255, 255, 255, 0.8);
+        .btn-small {
+            background: #fff;
             border: 2px solid #333;
-            padding: 5px;
+            padding: 8px 12px;
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
-            font-size: 7px;
+            font-size: 8px;
+            box-shadow: 3px 3px 0px #000;
         }
 
-        /* Mobile Controls Styling */
-        #mobile-controls {
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
             position: absolute;
-            bottom: 20px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            pointer-events: none;
-            z-index: 80;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border: 2px solid #333;
         }
 
-        .control-group {
-            display: flex;
-            gap: 15px;
-            pointer-events: auto;
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px; width: 14px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border: 2px solid #333;
         }
 
-        .touch-btn {
-            width: 60px;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.4);
-            border: 3px solid rgba(0, 0, 0, 0.3);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+        input:checked + .slider { background-color: #4CAF50; }
+        input:checked + .slider:before { transform: translateX(16px); }
 
-        .touch-btn:active {
-            background: rgba(255, 255, 255, 0.7);
-        }
-
-        @media (min-width: 1024px) {
-            #mobile-controls {
-                display: none; /* Sembunyikan di desktop */
-            }
+        @media (max-height: 500px) {
+            .touch-btn { width: 60px; height: 60px; font-size: 20px; }
+            #mobile-controls { padding-bottom: 20px; }
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <div id="audio-controls">
-            <button id="music-toggle" class="audio-btn">MUSIK: OFF</button>
+        <div id="settings-menu">
+            <button id="btn-settings-toggle" class="btn-small">MENU ⚙️</button>
+            <div id="panel-settings" class="control-panel">
+                <div class="setting-item">
+                    <span>MUSIK</span>
+                    <label class="switch">
+                        <input type="checkbox" id="check-music">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <span>KONTROL</span>
+                    <label class="switch">
+                        <input type="checkbox" id="check-controls" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button id="btn-fullscreen" class="btn-small mt-2" style="width: 100%;">FULLSCREEN</button>
+            </div>
         </div>
 
         <div id="ui-layer">
-            <div class="text-[10px]">SKOR: <span id="score">0</span></div>
-            <div class="text-[10px]">DNA: <span id="dna-count">0</span></div>
-            <div id="level-indicator" class="mt-1 text-[8px]">Kesulitan: Level 1</div>
+            <div style="font-size: 10px;">SKOR: <span id="score">0</span></div>
+            <div style="font-size: 10px;">DNA: <span id="dna-count">0</span></div>
+            <div id="level-indicator" style="margin-top: 4px; font-size: 8px;">Level 1</div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Mobile Controls -->
         <div id="mobile-controls">
             <div class="control-group">
                 <div id="btn-left" class="touch-btn">◀</div>
@@ -179,8 +258,8 @@
         </div>
 
         <div id="quiz-container" class="quiz-overlay">
-            <div class="text-[8px] mb-2 text-blue-600">GERBANG EVOLUSI</div>
-            <h2 id="question">Pertanyaan Evolusi di sini?</h2>
+            <div style="font-size: 8px; margin-bottom: 8px; color: #4A90E2;">GERBANG EVOLUSI</div>
+            <h2 id="question">Pertanyaan?</h2>
             <div id="options-list" class="flex flex-col gap-2"></div>
         </div>
 
@@ -202,26 +281,46 @@
         const optionsList = document.getElementById('options-list');
         const messageBox = document.getElementById('message-box');
         const bgMusic = document.getElementById('bgMusic');
-        const musicToggle = document.getElementById('music-toggle');
+        
+        const settingsToggle = document.getElementById('btn-settings-toggle');
+        const settingsPanel = document.getElementById('panel-settings');
+        const musicCheck = document.getElementById('check-music');
+        const controlsCheck = document.getElementById('check-controls');
+        const mobileControlsContainer = document.getElementById('mobile-controls');
+        const fullscreenBtn = document.getElementById('btn-fullscreen');
 
-        const CANVAS_WIDTH = 800;
-        const CANVAS_HEIGHT = 450;
-        canvas.width = CANVAS_WIDTH;
-        canvas.height = CANVAS_HEIGHT;
+        const BASE_WIDTH = 1000;
+        const BASE_HEIGHT = 450;
+        
+        function resize() {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            const scale = Math.min(windowWidth / BASE_WIDTH, windowHeight / BASE_HEIGHT);
+            
+            canvas.width = BASE_WIDTH;
+            canvas.height = BASE_HEIGHT;
+            
+            canvas.style.width = (BASE_WIDTH * scale) + 'px';
+            canvas.style.height = (BASE_HEIGHT * scale) + 'px';
+        }
 
-        const GRAVITY = 0.5;
-        const JUMP_FORCE = -10;
-        const SPEED = 4;
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+        resize();
+
+        const GRAVITY = 0.48;
+        const JUMP_FORCE = -11.5;
+        const SPEED = 4.8;
 
         let score = 0;
         let dnaCount = 0;
         let gameActive = true;
         let cameraX = 0;
         let currentGateIndex = 0;
-        let isMusicPlaying = false;
 
         const player = {
-            x: 50,
+            x: 100,
             y: 300,
             width: 32,
             height: 48,
@@ -233,110 +332,97 @@
         };
 
         const keys = {};
-        
-        // Mobile input state
-        const touchInput = {
-            left: false,
-            right: false,
-            jump: false
-        };
+        const touchInput = { left: false, right: false, jump: false };
 
         const platforms = [
-            { x: 0, y: 400, w: 1000, h: 50, type: 'ground' },
-            { x: 200, y: 300, w: 150, h: 20, type: 'platform' },
-            { x: 450, y: 220, w: 150, h: 20, type: 'platform' },
-            { x: 700, y: 300, w: 150, h: 20, type: 'platform' },
-            { x: 1000, y: 320, w: 300, h: 20, type: 'platform' },
-            { x: 1350, y: 400, w: 1500, h: 50, type: 'ground' },
-            { x: 1500, y: 280, w: 200, h: 20, type: 'platform' },
-            { x: 1800, y: 200, w: 200, h: 20, type: 'platform' },
-            { x: 2100, y: 300, w: 200, h: 20, type: 'platform' },
-            { x: 2850, y: 400, w: 1000, h: 50, type: 'ground' }
+            { x: 0, y: 400, w: 1500, h: 50, type: 'ground' },
+            { x: 300, y: 310, w: 200, h: 20, type: 'platform' },
+            { x: 600, y: 230, w: 200, h: 20, type: 'platform' },
+            { x: 900, y: 310, w: 200, h: 20, type: 'platform' },
+            { x: 1250, y: 320, w: 400, h: 20, type: 'platform' },
+            { x: 1700, y: 400, w: 1800, h: 50, type: 'ground' },
+            { x: 1850, y: 280, w: 250, h: 20, type: 'platform' },
+            { x: 2200, y: 200, w: 250, h: 20, type: 'platform' },
+            { x: 2600, y: 300, w: 250, h: 20, type: 'platform' },
+            { x: 3500, y: 400, w: 1500, h: 50, type: 'ground' }
         ];
 
         const collectibles = [
-            { x: 250, y: 260, w: 20, h: 20, gathered: false },
-            { x: 500, y: 180, w: 20, h: 20, gathered: false },
-            { x: 750, y: 260, w: 20, h: 20, gathered: false },
-            { x: 1100, y: 280, w: 20, h: 20, gathered: false },
-            { x: 1600, y: 240, w: 20, h: 20, gathered: false },
-            { x: 1900, y: 160, w: 20, h: 20, gathered: false }
+            { x: 350, y: 270, w: 20, h: 20, gathered: false },
+            { x: 650, y: 190, w: 20, h: 20, gathered: false },
+            { x: 950, y: 270, w: 20, h: 20, gathered: false },
+            { x: 1350, y: 280, w: 20, h: 20, gathered: false },
+            { x: 2000, y: 240, w: 20, h: 20, gathered: false },
+            { x: 2300, y: 160, w: 20, h: 20, gathered: false }
         ];
 
         const enemies = [
-            { x: 600, y: 368, w: 60, h: 32, startX: 400, endX: 900, speed: 2, color: '#2E7D32', type: 'dino' },
-            { x: 1500, y: 368, w: 60, h: 32, startX: 1400, endX: 2000, speed: 3, color: '#2E7D32', type: 'dino' },
-            { x: 2200, y: 368, w: 60, h: 32, startX: 2100, endX: 2700, speed: 4, color: '#C62828', type: 'dino' }
+            { x: 700, y: 368, w: 60, h: 32, startX: 500, endX: 1100, speed: 2.5, color: '#2E7D32' },
+            { x: 1800, y: 368, w: 60, h: 32, startX: 1700, endX: 2400, speed: 3.8, color: '#2E7D32' },
+            { x: 2800, y: 368, w: 60, h: 32, startX: 2500, endX: 3300, speed: 4.8, color: '#C62828' }
         ];
 
         const gates = [
-            { x: 950, y: 300, w: 50, h: 100, active: true, id: 0 },
-            { x: 1300, y: 300, w: 50, h: 100, active: true, id: 1 },
-            { x: 2050, y: 300, w: 50, h: 100, active: true, id: 2 },
-            { x: 2800, y: 300, w: 50, h: 100, active: true, id: 3 }
+            { x: 1100, y: 300, w: 60, h: 100, active: true, id: 0 },
+            { x: 1600, y: 300, w: 60, h: 100, active: true, id: 1 },
+            { x: 2500, y: 300, w: 60, h: 100, active: true, id: 2 },
+            { x: 3400, y: 300, w: 60, h: 100, active: true, id: 3 }
         ];
 
         const questions = [
-            {
-                q: "Siapa tokoh yang mengemukakan teori bahwa jerapah berleher panjang karena sering menjulurkan lehernya?",
-                options: ["Charles Darwin", "Jean Baptiste Lamarck", "August Weismann", "Gregor Mendel"],
-                correct: 1
-            },
-            {
-                q: "Sayap pinguin dan sayap burung merpati memiliki asal-usul yang sama tetapi fungsinya berbeda. Ini disebut...",
-                options: ["Analogi", "Homologi", "Konvergensi", "Spesiasi"],
-                correct: 1
-            },
-            {
-                q: "Menurut Darwin, faktor utama yang menyebabkan terjadinya evolusi adalah...",
-                options: ["Mutasi gen", "Seleksi alam", "Adaptasi paksaan", "Rekombinasi"],
-                correct: 1
-            },
-            {
-                q: "Percobaan memotong ekor tikus berkali-kali menunjukkan ekor tikus tetap panjang. Hal ini membantah teori...",
-                options: ["Darwin", "Hardy-Weinberg", "Lamarck", "Spallanzani"],
-                correct: 2
-            },
-            {
-                q: "Terbentuknya spesies baru akibat adanya penghalang berupa pegunungan atau sungai disebut isolasi...",
-                options: ["Geografis", "Reproduksi", "Tingkah laku", "Musim"],
-                correct: 0
-            },
-            {
-                q: "Sirip hiu dan sirip lumba-lumba memiliki fungsi sama tapi asal-usul berbeda. Ini merupakan contoh...",
-                options: ["Homologi", "Divergensi", "Analogi", "Radiasi Adaptif"],
-                correct: 2
-            },
-            {
-                q: "Dalam populasi, frekuensi gen dominan (P) adalah 0,6. Berapa frekuensi heterozigot (2Pq) menurut Hardy-Weinberg?",
-                options: ["0,36", "0,16", "0,48", "0,24"],
-                correct: 2
-            }
+            { q: "Siapa tokoh yang mengemukakan teori jerapah berleher panjang karena menjulurkan leher?", options: ["Charles Darwin", "Lamarck", "Weismann", "Mendel"], correct: 1 },
+            { q: "Asal-usul sama tapi fungsi berbeda disebut...", options: ["Analogi", "Homologi", "Konvergensi", "Spesiasi"], correct: 1 },
+            { q: "Faktor utama evolusi menurut Darwin adalah...", options: ["Mutasi", "Seleksi Alam", "Adaptasi", "Rekombinasi"], correct: 1 },
+            { q: "Ekor tikus tetap panjang meski dipotong berkali-kali membantah teori...", options: ["Darwin", "Hardy-Weinberg", "Lamarck", "Spallanzani"], correct: 2 },
+            { q: "Spesies baru akibat penghalang geografis disebut isolasi...", options: ["Geografis", "Reproduksi", "Tingkah laku", "Musim"], correct: 0 },
+            { q: "Sirip hiu dan lumba-lumba (fungsi sama, asal beda) disebut...", options: ["Homologi", "Divergensi", "Analogi", "Radiasi"], correct: 2 },
+            { q: "Jika P = 0,6, berapa frekuensi heterozigot (2Pq)?", options: ["0,36", "0,16", "0,48", "0,24"], correct: 2 }
         ];
 
-        // Music Toggle
-        musicToggle.onclick = () => {
-            if (isMusicPlaying) {
-                bgMusic.pause();
-                musicToggle.innerText = "MUSIK: OFF";
-            } else {
-                bgMusic.play().catch(e => console.log("Interaksi user diperlukan"));
-                musicToggle.innerText = "MUSIK: ON";
-            }
-            isMusicPlaying = !isMusicPlaying;
+        settingsToggle.onclick = (e) => {
+            e.stopPropagation();
+            settingsPanel.style.display = settingsPanel.style.display === 'flex' ? 'none' : 'flex';
         };
 
-        // Mobile Controls Event Listeners
+        musicCheck.onchange = () => {
+            if (musicCheck.checked) {
+                bgMusic.play().catch(() => {
+                    musicCheck.checked = false;
+                    showMessage("Sentuh layar dulu!");
+                });
+            } else {
+                bgMusic.pause();
+            }
+        };
+
+        controlsCheck.onchange = () => {
+            mobileControlsContainer.style.display = controlsCheck.checked ? 'flex' : 'none';
+        };
+
+        fullscreenBtn.onclick = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => showMessage("Gagal Fullscreen"));
+            } else {
+                document.exitFullscreen();
+            }
+            settingsPanel.style.display = 'none';
+        };
+
         const setupTouchBtn = (id, property) => {
             const btn = document.getElementById(id);
-            const startHandler = (e) => { e.preventDefault(); touchInput[property] = true; };
-            const endHandler = (e) => { e.preventDefault(); touchInput[property] = false; };
-            
-            btn.addEventListener('touchstart', startHandler);
-            btn.addEventListener('touchend', endHandler);
-            btn.addEventListener('mousedown', startHandler);
-            btn.addEventListener('mouseup', endHandler);
-            btn.addEventListener('mouseleave', endHandler);
+            const start = (e) => { 
+                e.preventDefault(); 
+                touchInput[property] = true; 
+            };
+            const end = (e) => { 
+                e.preventDefault(); 
+                touchInput[property] = false; 
+            };
+            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchend', end);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+            btn.addEventListener('mouseleave', end);
         };
 
         setupTouchBtn('btn-left', 'left');
@@ -346,9 +432,9 @@
         function drawPlayer() {
             ctx.fillStyle = player.color;
             ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = '#fff';
             ctx.fillRect(player.x - cameraX + 20, player.y + 10, 8, 8);
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = '#000';
             ctx.fillRect(player.x - cameraX + 24, player.y + 12, 4, 4);
         }
 
@@ -356,21 +442,8 @@
             enemies.forEach(e => {
                 ctx.fillStyle = e.color;
                 ctx.fillRect(e.x - cameraX, e.y, e.w, e.h);
-                ctx.fillRect(e.speed > 0 ? e.x - cameraX + e.w : e.x - cameraX - 20, e.y - 10, 20, 20);
-                ctx.fillStyle = 'white';
-                ctx.fillRect(e.speed > 0 ? e.x - cameraX + e.w + 12 : e.x - cameraX - 16, e.y - 6, 4, 4);
-                ctx.fillStyle = e.color;
-                ctx.beginPath();
-                if(e.speed > 0) {
-                    ctx.moveTo(e.x - cameraX, e.y + e.h);
-                    ctx.lineTo(e.x - cameraX - 15, e.y + e.h/2);
-                    ctx.lineTo(e.x - cameraX, e.y);
-                } else {
-                    ctx.moveTo(e.x + e.w - cameraX, e.y + e.h);
-                    ctx.lineTo(e.x + e.w + 15 - cameraX, e.y + e.h/2);
-                    ctx.lineTo(e.x + e.w - cameraX, e.y);
-                }
-                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(e.speed > 0 ? e.x - cameraX + e.w - 10 : e.x - cameraX + 5, e.y + 5, 5, 5);
             });
         }
 
@@ -392,7 +465,7 @@
                     ctx.beginPath();
                     ctx.arc(c.x - cameraX + 10, c.y + 10, 10, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.fillStyle = 'white';
+                    ctx.fillStyle = '#fff';
                     ctx.font = '8px "Press Start 2P"';
                     ctx.fillText('D', c.x - cameraX + 6, c.y + 14);
                 }
@@ -402,13 +475,12 @@
         function drawGates() {
             gates.forEach(g => {
                 if (g.active) {
-                    ctx.fillStyle = '#555';
+                    ctx.fillStyle = '#444';
                     ctx.fillRect(g.x - cameraX, g.y, g.w, g.h);
-                    ctx.fillStyle = '#999';
-                    ctx.fillRect(g.x - cameraX + 5, g.y + 5, g.w - 10, g.h - 10);
-                    ctx.fillStyle = 'black';
-                    ctx.font = '8px "Press Start 2P"';
-                    ctx.fillText('GATE', g.x - cameraX + 2, g.y - 10);
+                    ctx.fillStyle = '#777';
+                    ctx.fillRect(g.x - cameraX + 8, g.y + 10, g.w - 16, g.h - 10);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(g.x - cameraX + g.w/2 - 2, g.y + 40, 4, 20);
                 }
             });
         }
@@ -416,60 +488,49 @@
         function showMessage(text) {
             messageBox.innerText = text;
             messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 3000);
+            setTimeout(() => messageBox.style.display = 'none', 2500);
         }
 
         function triggerQuiz(gateId) {
             gameActive = false;
-            const qIndex = currentGateIndex;
-            const q = questions[qIndex];
-            
+            const q = questions[currentGateIndex];
             questionEl.innerText = q.q;
             optionsList.innerHTML = '';
-            
-            q.options.forEach((opt, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-option';
-                btn.innerText = opt;
-                btn.onclick = () => checkAnswer(index, qIndex, gateId);
-                optionsList.appendChild(btn);
+            q.options.forEach((opt, idx) => {
+                const b = document.createElement('button');
+                b.className = 'btn-option';
+                b.innerText = opt;
+                b.onclick = () => {
+                    if (idx === q.correct) {
+                        showMessage("Luar Biasa! Adaptasi Berhasil!");
+                        gates.find(g => g.id === gateId).active = false;
+                        score += 200;
+                        currentGateIndex++;
+                        scoreEl.innerText = score;
+                        levelIndicator.innerText = `Level ${currentGateIndex + 1}`;
+                    } else {
+                        showMessage("Gagal Adaptasi! Terlempar!");
+                        player.x -= 200;
+                    }
+                    quizContainer.style.display = 'none';
+                    gameActive = true;
+                    requestAnimationFrame(update);
+                };
+                optionsList.appendChild(b);
             });
-            
             quizContainer.style.display = 'flex';
-        }
-
-        function checkAnswer(selectedIndex, qIndex, gateId) {
-            const q = questions[qIndex];
-            if (selectedIndex === q.correct) {
-                showMessage("Luar Biasa! Kamu beradaptasi!");
-                gates.find(g => g.id === gateId).active = false;
-                score += 200;
-                currentGateIndex++;
-                scoreEl.innerText = score;
-                levelIndicator.innerText = `Kesulitan: Level ${currentGateIndex + 1}`;
-            } else {
-                showMessage("Gagal Adaptasi! Terlempar!");
-                player.x -= 150;
-            }
-            quizContainer.style.display = 'none';
-            gameActive = true;
-            requestAnimationFrame(update);
         }
 
         function update() {
             if (!gameActive) return;
 
-            // Handle Input (Keyboard + Touch)
-            if (keys[39] || keys['ArrowRight'] || touchInput.right) {
+            if (keys['ArrowRight'] || keys['d'] || touchInput.right) {
                 if (player.velX < SPEED) player.velX++;
             }
-            if (keys[37] || keys['ArrowLeft'] || touchInput.left) {
+            if (keys['ArrowLeft'] || keys['a'] || touchInput.left) {
                 if (player.velX > -SPEED) player.velX--;
             }
-
-            if ((keys[38] || keys['ArrowUp'] || keys[' '] || touchInput.jump) && !player.jumping && player.grounded) {
+            if ((keys['ArrowUp'] || keys[' '] || touchInput.jump) && !player.jumping && player.grounded) {
                 player.jumping = true;
                 player.grounded = false;
                 player.velY = JUMP_FORCE;
@@ -478,15 +539,12 @@
             player.velY += GRAVITY;
             player.x += player.velX;
             player.y += player.velY;
-            player.velX *= 0.8;
+            player.velX *= 0.85;
 
             player.grounded = false;
-
             platforms.forEach(p => {
-                if (player.x < p.x + p.w &&
-                    player.x + player.width > p.x &&
-                    player.y < p.y + p.h &&
-                    player.y + player.height > p.y) {
+                if (player.x < p.x + p.w && player.x + player.width > p.x &&
+                    player.y < p.y + p.h && player.y + player.height > p.y) {
                     if (player.velY > 0 && player.y + player.height < p.y + 20) {
                         player.grounded = true;
                         player.jumping = false;
@@ -499,41 +557,30 @@
             enemies.forEach(e => {
                 e.x += e.speed;
                 if(e.x > e.endX || e.x < e.startX) e.speed *= -1;
-
-                if (player.x < e.x + e.w &&
-                    player.x + player.width > e.x &&
-                    player.y < e.y + e.h &&
-                    player.y + player.height > e.y) {
-                    
+                if (player.x < e.x + e.w && player.x + player.width > e.x &&
+                    player.y < e.y + e.h && player.y + player.height > e.y) {
                     if(player.velY > 0 && player.y + player.height < e.y + 15) {
-                        e.x = -1000;
+                        e.x = -5000;
                         score += 150;
                         scoreEl.innerText = score;
-                        player.velY = -8;
+                        player.velY = -7;
                     } else {
-                        player.x = 50;
-                        player.y = 300;
-                        showMessage("Dimakan Predator!");
+                        player.x = 100; player.y = 300;
+                        showMessage("Predator Menang!");
                     }
                 }
             });
 
             gates.forEach(g => {
-                if (g.active && 
-                    player.x < g.x + g.w &&
-                    player.x + player.width > g.x &&
-                    player.y < g.y + g.h &&
-                    player.y + player.height > g.y) {
+                if (g.active && player.x < g.x + g.w && player.x + player.width > g.x &&
+                    player.y < g.y + g.h && player.y + player.height > g.y) {
                     triggerQuiz(g.id);
                 }
             });
 
             collectibles.forEach(c => {
-                if (!c.gathered &&
-                    player.x < c.x + c.w &&
-                    player.x + player.width > c.x &&
-                    player.y < c.y + c.h &&
-                    player.y + player.height > c.y) {
+                if (!c.gathered && player.x < c.x + c.w && player.x + player.width > c.x &&
+                    player.y < c.y + c.h && player.y + player.height > c.y) {
                     c.gathered = true;
                     dnaCount++;
                     dnaEl.innerText = dnaCount;
@@ -542,15 +589,13 @@
                 }
             });
 
-            if (player.x > CANVAS_WIDTH / 2) {
-                cameraX = player.x - CANVAS_WIDTH / 2;
+            if (player.x > BASE_WIDTH * 0.3) {
+                cameraX = player.x - BASE_WIDTH * 0.3;
             }
 
-            if (player.y > CANVAS_HEIGHT) {
-                player.x = 50;
-                player.y = 300;
-                player.velY = 0;
-                showMessage("Seleksi Alam: Mati!");
+            if (player.y > BASE_HEIGHT) {
+                player.x = 100; player.y = 300; player.velY = 0;
+                showMessage("Punah! Mulai Lagi.");
             }
 
             draw();
@@ -558,13 +603,19 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
             
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.beginPath();
-            ctx.arc(200 - (cameraX*0.1), 100, 30, 0, Math.PI*2);
-            ctx.arc(230 - (cameraX*0.1), 100, 40, 0, Math.PI*2);
-            ctx.arc(260 - (cameraX*0.1), 100, 30, 0, Math.PI*2);
+            ctx.arc(200 - (cameraX*0.1), 80, 20, 0, Math.PI*2);
+            ctx.arc(235 - (cameraX*0.1), 80, 30, 0, Math.PI*2);
+            ctx.arc(265 - (cameraX*0.1), 80, 20, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(700 - (cameraX*0.15), 120, 25, 0, Math.PI*2);
+            ctx.arc(740 - (cameraX*0.15), 120, 35, 0, Math.PI*2);
+            ctx.arc(775 - (cameraX*0.15), 120, 25, 0, Math.PI*2);
             ctx.fill();
 
             drawPlatforms();
@@ -573,15 +624,16 @@
             drawEnemies();
             drawPlayer();
 
-            if(player.x > 3700) {
+            if(player.x > 4500) {
                 gameActive = false;
-                ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                ctx.fillRect(0,0, CANVAS_WIDTH, CANVAS_HEIGHT);
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0,0, BASE_WIDTH, BASE_HEIGHT);
+                ctx.fillStyle = '#fff';
                 ctx.font = '16px "Press Start 2P"';
-                ctx.fillText("EVOLUSI SEMPURNA!", 150, 200);
+                ctx.textAlign = "center";
+                ctx.fillText("EVOLUSI SEMPURNA!", BASE_WIDTH/2, 200);
                 ctx.font = '10px "Press Start 2P"';
-                ctx.fillText(`Skor Akhir: ${score}`, 250, 250);
+                ctx.fillText(`Skor Akhir: ${score}`, BASE_WIDTH/2, 250);
             }
         }
 
@@ -589,8 +641,12 @@
         window.addEventListener('keyup', e => keys[e.key] = false);
 
         window.onload = () => {
+            if (window.innerWidth > 1024) {
+                controlsCheck.checked = false;
+                mobileControlsContainer.style.display = 'none';
+            }
             update();
-            showMessage("Gunakan Tombol Layar atau Keyboard!");
+            resize();
         };
 
     </script>
