@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolution Adventure - Biologi XII</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #333;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .quiz-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            border: 4px solid #333;
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 90%;
+            max-width: 600px;
+            z-index: 100;
+        }
+
+        .quiz-overlay h2 {
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #d32f2f;
+        }
+
+        .btn-option {
+            background: #4A90E2;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 9px;
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.1s;
+        }
+
+        .btn-option:hover {
+            background: #357ABD;
+            transform: scale(1.02);
+        }
+
+        #message-box {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            font-size: 12px;
+            text-align: center;
+            z-index: 50;
+        }
+
+        #audio-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 60;
+            pointer-events: auto;
+        }
+
+        .audio-btn {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #333;
+            padding: 8px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Audio Controls -->
+        <div id="audio-controls">
+            <button id="music-toggle" class="audio-btn">MUSIC: OFF</button>
+        </div>
+
+        <div id="ui-layer">
+            <div>SKOR: <span id="score">0</span></div>
+            <div>DNA: <span id="dna-count">0</span></div>
+            <div id="level-indicator" class="mt-2 text-xs">Difficulty: Level 1</div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="quiz-container" class="quiz-overlay">
+            <div class="text-[10px] mb-2 text-blue-600">GERBANG EVOLUSI</div>
+            <h2 id="question">Pertanyaan Evolusi di sini?</h2>
+            <div id="options-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <div id="message-box"></div>
+    </div>
+
+    <!-- Background Music (Retro Style) -->
+    <audio id="bgMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const dnaEl = document.getElementById('dna-count');
+        const levelIndicator = document.getElementById('level-indicator');
+        const quizContainer = document.getElementById('quiz-container');
+        const questionEl = document.getElementById('question');
+        const optionsList = document.getElementById('options-list');
+        const messageBox = document.getElementById('message-box');
+        const bgMusic = document.getElementById('bgMusic');
+        const musicToggle = document.getElementById('music-toggle');
+
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 450;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -10;
+        const SPEED = 4;
+
+        let score = 0;
+        let dnaCount = 0;
+        let gameActive = true;
+        let cameraX = 0;
+        let currentGateIndex = 0;
+        let isMusicPlaying = false;
+
+        const player = {
+            x: 50,
+            y: 300,
+            width: 32,
+            height: 48,
+            velX: 0,
+            velY: 0,
+            jumping: false,
+            grounded: false,
+            color: '#FF5733'
+        };
+
+        const keys = {};
+        
+        const platforms = [
+            { x: 0, y: 400, w: 1000, h: 50, type: 'ground' },
+            { x: 200, y: 300, w: 150, h: 20, type: 'platform' },
+            { x: 450, y: 220, w: 150, h: 20, type: 'platform' },
+            { x: 700, y: 300, w: 150, h: 20, type: 'platform' },
+            { x: 1000, y: 320, w: 300, h: 20, type: 'platform' },
+            { x: 1350, y: 400, w: 1500, h: 50, type: 'ground' },
+            { x: 1500, y: 280, w: 200, h: 20, type: 'platform' },
+            { x: 1800, y: 200, w: 200, h: 20, type: 'platform' },
+            { x: 2100, y: 300, w: 200, h: 20, type: 'platform' },
+            { x: 2850, y: 400, w: 1000, h: 50, type: 'ground' }
+        ];
+
+        const collectibles = [
+            { x: 250, y: 260, w: 20, h: 20, gathered: false },
+            { x: 500, y: 180, w: 20, h: 20, gathered: false },
+            { x: 750, y: 260, w: 20, h: 20, gathered: false },
+            { x: 1100, y: 280, w: 20, h: 20, gathered: false },
+            { x: 1600, y: 240, w: 20, h: 20, gathered: false },
+            { x: 1900, y: 160, w: 20, h: 20, gathered: false }
+        ];
+
+        const enemies = [
+            { x: 600, y: 368, w: 60, h: 32, startX: 400, endX: 900, speed: 2, color: '#2E7D32', type: 'dino' },
+            { x: 1500, y: 368, w: 60, h: 32, startX: 1400, endX: 2000, speed: 3, color: '#2E7D32', type: 'dino' },
+            { x: 2200, y: 368, w: 60, h: 32, startX: 2100, endX: 2700, speed: 4, color: '#C62828', type: 'dino' }
+        ];
+
+        const gates = [
+            { x: 950, y: 300, w: 50, h: 100, active: true, id: 0 },
+            { x: 1300, y: 300, w: 50, h: 100, active: true, id: 1 },
+            { x: 2050, y: 300, w: 50, h: 100, active: true, id: 2 },
+            { x: 2800, y: 300, w: 50, h: 100, active: true, id: 3 }
+        ];
+
+        const questions = [
+            {
+                q: "Siapa tokoh yang mengemukakan teori bahwa jerapah berleher panjang karena sering menjulurkan lehernya?",
+                options: ["Charles Darwin", "Jean Baptiste Lamarck", "August Weismann", "Gregor Mendel"],
+                correct: 1
+            },
+            {
+                q: "Sayap pinguin dan sayap burung merpati memiliki asal-usul yang sama tetapi fungsinya berbeda. Ini disebut...",
+                options: ["Analogi", "Homologi", "Konvergensi", "Spesiasi"],
+                correct: 1
+            },
+            {
+                q: "Menurut Darwin, faktor utama yang menyebabkan terjadinya evolusi adalah...",
+                options: ["Mutasi gen", "Seleksi alam", "Adaptasi paksaan", "Rekombinasi"],
+                correct: 1
+            },
+            {
+                q: "Percobaan memotong ekor tikus berkali-kali menunjukkan ekor tikus tetap panjang. Hal ini membantah teori...",
+                options: ["Darwin", "Hardy-Weinberg", "Lamarck", "Spallanzani"],
+                correct: 2
+            },
+            {
+                q: "Terbentuknya spesies baru akibat adanya penghalang berupa pegunungan atau sungai disebut isolasi...",
+                options: ["Geografis", "Reproduksi", "Tingkah laku", "Musim"],
+                correct: 0
+            },
+            {
+                q: "Sirip hiu dan sirip lumba-lumba memiliki fungsi sama tapi asal-usul berbeda. Ini merupakan contoh...",
+                options: ["Homologi", "Divergensi", "Analogi", "Radiasi Adaptif"],
+                correct: 2
+            },
+            {
+                q: "Dalam populasi, frekuensi gen dominan (P) adalah 0,6. Berapa frekuensi heterozigot (2Pq) menurut Hardy-Weinberg?",
+                options: ["0,36", "0,16", "0,48", "0,24"],
+                correct: 2
+            }
+        ];
+
+        // Music Toggle Function
+        musicToggle.onclick = () => {
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                musicToggle.innerText = "MUSIC: OFF";
+            } else {
+                bgMusic.play().catch(e => console.log("User interaction required"));
+                musicToggle.innerText = "MUSIC: ON";
+            }
+            isMusicPlaying = !isMusicPlaying;
+        };
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x - cameraX + 20, player.y + 10, 8, 8);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x - cameraX + 24, player.y + 12, 4, 4);
+        }
+
+        function drawEnemies() {
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x - cameraX, e.y, e.w, e.h);
+                ctx.fillRect(e.speed > 0 ? e.x - cameraX + e.w : e.x - cameraX - 20, e.y - 10, 20, 20);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(e.speed > 0 ? e.x - cameraX + e.w + 12 : e.x - cameraX - 16, e.y - 6, 4, 4);
+                ctx.fillStyle = e.color;
+                ctx.beginPath();
+                if(e.speed > 0) {
+                    ctx.moveTo(e.x - cameraX, e.y + e.h);
+                    ctx.lineTo(e.x - cameraX - 15, e.y + e.h/2);
+                    ctx.lineTo(e.x - cameraX, e.y);
+                } else {
+                    ctx.moveTo(e.x + e.w - cameraX, e.y + e.h);
+                    ctx.lineTo(e.x + e.w + 15 - cameraX, e.y + e.h/2);
+                    ctx.lineTo(e.x + e.w - cameraX, e.y);
+                }
+                ctx.fill();
+            });
+        }
+
+        function drawPlatforms() {
+            platforms.forEach(p => {
+                ctx.fillStyle = p.type === 'ground' ? '#4d2911' : '#2d5a27';
+                ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
+                if(p.type === 'ground') {
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.fillRect(p.x - cameraX, p.y, p.w, 10);
+                }
+            });
+        }
+
+        function drawCollectibles() {
+            collectibles.forEach(c => {
+                if (!c.gathered) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(c.x - cameraX + 10, c.y + 10, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'white';
+                    ctx.font = '8px "Press Start 2P"';
+                    ctx.fillText('D', c.x - cameraX + 6, c.y + 14);
+                }
+            });
+        }
+
+        function drawGates() {
+            gates.forEach(g => {
+                if (g.active) {
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(g.x - cameraX, g.y, g.w, g.h);
+                    ctx.fillStyle = '#999';
+                    ctx.fillRect(g.x - cameraX + 5, g.y + 5, g.w - 10, g.h - 10);
+                    ctx.fillStyle = 'black';
+                    ctx.font = '8px "Press Start 2P"';
+                    ctx.fillText('GATE', g.x - cameraX + 2, g.y - 10);
+                }
+            });
+        }
+
+        function showMessage(text) {
+            messageBox.innerText = text;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        function triggerQuiz(gateId) {
+            gameActive = false;
+            const qIndex = currentGateIndex;
+            const q = questions[qIndex];
+            
+            questionEl.innerText = q.q;
+            optionsList.innerHTML = '';
+            
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-option';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index, qIndex, gateId);
+                optionsList.appendChild(btn);
+            });
+            
+            quizContainer.style.display = 'flex';
+        }
+
+        function checkAnswer(selectedIndex, qIndex, gateId) {
+            const q = questions[qIndex];
+            if (selectedIndex === q.correct) {
+                showMessage("Luar Biasa! Kamu beradaptasi dengan baik!");
+                gates.find(g => g.id === gateId).active = false;
+                score += 200;
+                currentGateIndex++;
+                scoreEl.innerText = score;
+                levelIndicator.innerText = `Difficulty: Level ${currentGateIndex + 1}`;
+            } else {
+                showMessage("Gagal Adaptasi! Kamu terlempar mundur.");
+                player.x -= 150;
+            }
+            quizContainer.style.display = 'none';
+            gameActive = true;
+            requestAnimationFrame(update);
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            if (keys[39] || keys['ArrowRight']) {
+                if (player.velX < SPEED) player.velX++;
+            }
+            if (keys[37] || keys['ArrowLeft']) {
+                if (player.velX > -SPEED) player.velX--;
+            }
+
+            if ((keys[38] || keys['ArrowUp'] || keys[' ']) && !player.jumping && player.grounded) {
+                player.jumping = true;
+                player.grounded = false;
+                player.velY = JUMP_FORCE;
+            }
+
+            player.velY += GRAVITY;
+            player.x += player.velX;
+            player.y += player.velY;
+            player.velX *= 0.8;
+
+            player.grounded = false;
+
+            platforms.forEach(p => {
+                if (player.x < p.x + p.w &&
+                    player.x + player.width > p.x &&
+                    player.y < p.y + p.h &&
+                    player.y + player.height > p.y) {
+                    if (player.velY > 0 && player.y + player.height < p.y + 20) {
+                        player.grounded = true;
+                        player.jumping = false;
+                        player.y = p.y - player.height;
+                        player.velY = 0;
+                    }
+                }
+            });
+
+            enemies.forEach(e => {
+                e.x += e.speed;
+                if(e.x > e.endX || e.x < e.startX) e.speed *= -1;
+
+                if (player.x < e.x + e.w &&
+                    player.x + player.width > e.x &&
+                    player.y < e.y + e.h &&
+                    player.y + player.height > e.y) {
+                    
+                    if(player.velY > 0 && player.y + player.height < e.y + 15) {
+                        e.x = -1000;
+                        score += 150;
+                        scoreEl.innerText = score;
+                        player.velY = -8;
+                    } else {
+                        player.x = 50;
+                        player.y = 300;
+                        showMessage("Dimakan Predator! Kamu tereliminasi.");
+                    }
+                }
+            });
+
+            gates.forEach(g => {
+                if (g.active && 
+                    player.x < g.x + g.w &&
+                    player.x + player.width > g.x &&
+                    player.y < g.y + g.h &&
+                    player.y + player.height > g.y) {
+                    triggerQuiz(g.id);
+                }
+            });
+
+            collectibles.forEach(c => {
+                if (!c.gathered &&
+                    player.x < c.x + c.w &&
+                    player.x + player.width > c.x &&
+                    player.y < c.y + c.h &&
+                    player.y + player.height > c.y) {
+                    c.gathered = true;
+                    dnaCount++;
+                    dnaEl.innerText = dnaCount;
+                    score += 50;
+                    scoreEl.innerText = score;
+                }
+            });
+
+            if (player.x > CANVAS_WIDTH / 2) {
+                cameraX = player.x - CANVAS_WIDTH / 2;
+            }
+
+            if (player.y > CANVAS_HEIGHT) {
+                player.x = 50;
+                player.y = 300;
+                player.velY = 0;
+                showMessage("Seleksi Alam: Organisme tidak bertahan.");
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(200 - (cameraX*0.1), 100, 30, 0, Math.PI*2);
+            ctx.arc(230 - (cameraX*0.1), 100, 40, 0, Math.PI*2);
+            ctx.arc(260 - (cameraX*0.1), 100, 30, 0, Math.PI*2);
+            ctx.fill();
+
+            drawPlatforms();
+            drawCollectibles();
+            drawGates();
+            drawEnemies();
+            drawPlayer();
+
+            if(player.x > 3700) {
+                gameActive = false;
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0,0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = 'white';
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText("EVOLUSI SEMPURNA!", 150, 200);
+                ctx.font = '12px "Press Start 2P"';
+                ctx.fillText(`Skor Akhir: ${score}`, 250, 250);
+            }
+        }
+
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        window.onload = () => {
+            update();
+            showMessage("Hati-hati Predator Dinosaurus!");
+        };
+
+    </script>
+</body>
+</html>
